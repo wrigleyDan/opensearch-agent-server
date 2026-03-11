@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -71,6 +72,44 @@ from server.run_routes import (  # noqa: E402
     get_run_events_route,
     get_run_route,
 )
+
+def _init_tracing(otlp_endpoint: str) -> None:
+    """Initialize OpenTelemetry tracing with an OTLP exporter.
+
+    Instruments Bedrock LLM calls via openinference so that all agent
+    invocations, tool calls, and LLM requests appear as spans in the
+    connected observability backend (e.g. Arize Phoenix, Jaeger, Grafana Tempo).
+
+    Args:
+        otlp_endpoint: Base URL of the OTLP collector, e.g. http://localhost:6006.
+                       The /v1/traces path is appended automatically.
+    """
+    try:
+        from openinference.instrumentation.bedrock import BedrockInstrumentor
+        from opentelemetry import trace
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+        exporter = OTLPSpanExporter(endpoint=f"{otlp_endpoint.rstrip('/')}/v1/traces")
+        provider = TracerProvider()
+        provider.add_span_processor(BatchSpanProcessor(exporter))
+        trace.set_tracer_provider(provider)
+        BedrockInstrumentor().instrument()
+        log_info_event(
+            logger,
+            f"✓ OpenTelemetry tracing enabled: {otlp_endpoint}",
+            "ag_ui.tracing_enabled",
+            otlp_endpoint=otlp_endpoint,
+        )
+    except ImportError as e:
+        log_warning_event(
+            logger,
+            f"✗ OpenTelemetry tracing not available (missing dependency): {e}",
+            "ag_ui.tracing_unavailable",
+            error=str(e),
+        )
+
 
 # Set by lifespan at startup; used by routes at request time.
 persistence: Any | None = None
@@ -215,6 +254,9 @@ def create_app(config_override: ServerConfig | None = None) -> FastAPI:
         loop = asyncio.get_running_loop()
         _register_mcp_cancel_scope_exception_handler(loop)
 
+        if otlp_endpoint := os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
+            _init_tracing(otlp_endpoint)
+
         from server.config import validate_config_on_startup
 
         validate_config_on_startup(config_resolved)
@@ -268,7 +310,7 @@ def create_app(config_override: ServerConfig | None = None) -> FastAPI:
             description="Search Relevance Testing agent (ART) — hypothesis generation, "
             "evaluation, UBI analysis, and online A/B testing",
             page_contexts=["search-relevance", "searchRelevance"],
-            is_fallback=False,
+            is_fallback=True,
         ))
 
         # Register fallback agent (handles all unmatched page contexts)
@@ -276,7 +318,7 @@ def create_app(config_override: ServerConfig | None = None) -> FastAPI:
             name="fallback",
             description="General OpenSearch assistant with MCP tools",
             page_contexts=[],
-            is_fallback=True,
+            is_fallback=False,
         ))
 
         log_info_event(

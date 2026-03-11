@@ -9,7 +9,6 @@ import os
 from typing import Any
 
 import boto3
-from botocore.config import Config as BotocoreConfig
 from dotenv import load_dotenv
 from strands import Agent
 from strands.models.bedrock import BedrockModel
@@ -232,18 +231,10 @@ async def hypothesis_agent(query: str) -> str:
             get_top_queries_by_engagement,
         )
 
-        # Create model with extended timeout configuration
-        # Hypothesis generation with sanity checks can take 3-5 minutes
-        boto_config = BotocoreConfig(
-            connect_timeout=60,
-            read_timeout=600,  # 10 minutes for hypothesis generation with experiments
-            retries={"max_attempts": 0},  # Fail fast, no retries
-        )
         model = BedrockModel(
             model_id=os.getenv("BEDROCK_INFERENCE_PROFILE_ARN"),
             boto_session=bedrock_session,
-            boto_client_config=boto_config,
-            streaming=True,  # Enable streaming for real-time progress
+            streaming=True,
         )
 
         # Combine UBI analytics tools with utility tools
@@ -311,18 +302,10 @@ async def evaluation_agent(query: str) -> str:
             execute_search_with_configuration,
         )
 
-        # Create model with extended timeout configuration
-        # Evaluations with judgment generation and experiments can take 5-10 minutes
-        boto_config = BotocoreConfig(
-            connect_timeout=60,
-            read_timeout=1800,  # 30 minutes for evaluation with judgment generation
-            retries={"max_attempts": 0},  # Fail fast, no retries
-        )
         model = BedrockModel(
             model_id=os.getenv("BEDROCK_INFERENCE_PROFILE_ARN"),
             boto_session=bedrock_session,
-            boto_client_config=boto_config,
-            streaming=True,  # Enable streaming for real-time progress
+            streaming=True,
         )
 
         # Combine OpenSearch MCP tools with evaluation-specific tools
@@ -376,26 +359,18 @@ async def user_behavior_analysis_agent(query: str) -> str:
 
     try:
         # Import UBI analytics tools
-        from tools.ubi_analytics_tools import (
-            get_document_ctr,
-            get_query_ctr,
-            get_query_performance_metrics,
-            get_top_documents_by_engagement,
-            get_top_queries_by_engagement,
-        )
+        # from tools.ubi_analytics_tools import (
+        #     get_document_ctr,
+        #     get_query_ctr,
+        #     get_query_performance_metrics,
+        #     get_top_documents_by_engagement,
+        #     get_top_queries_by_engagement,
+        # )
 
-        # Create model with moderate timeout configuration
-        # UBI analytics queries are relatively quick (simple aggregations)
-        boto_config = BotocoreConfig(
-            connect_timeout=60,
-            read_timeout=300,  # 5 minutes for UBI analytics
-            retries={"max_attempts": 0},  # Fail fast, no retries
-        )
         model = BedrockModel(
             model_id=os.getenv("BEDROCK_HAIKU_INFERENCE_PROFILE_ARN"),
             boto_session=bedrock_session,
-            boto_client_config=boto_config,
-            streaming=True,  # Enable streaming for real-time progress
+            streaming=True,
         )
 
         # Combine UBI analytics tools with utility tools
@@ -403,11 +378,11 @@ async def user_behavior_analysis_agent(query: str) -> str:
             # OpenSearch MCP tools
             *_opensearch_tools,
             # UBI analytics tools
-            get_query_ctr,
-            get_document_ctr,
-            get_query_performance_metrics,
-            get_top_queries_by_engagement,
-            get_top_documents_by_engagement,
+            # get_query_ctr,
+            # get_document_ctr,
+            # get_query_performance_metrics,
+            # get_top_queries_by_engagement,
+            # get_top_documents_by_engagement,
         ]
 
         # Create specialized agent with UBI analytics focus
@@ -428,5 +403,3 @@ async def user_behavior_analysis_agent(query: str) -> str:
         if "rate limit" in error_msg.lower() or "429" in error_msg:
             return "⚠️ Rate limit reached. Please wait a moment before trying again, or consider simplifying your request."
         return f"Error in user behavior analysis: {error_msg}"
-
-

@@ -10,75 +10,9 @@ import json
 from utils.logging_helpers import get_logger
 from utils.monitored_tool import monitored_tool
 from utils.opensearch_client import get_client_manager
-from utils.tool_utils import format_tool_error, log_tool_error
+from utils.tool_utils import log_tool_error
 
 logger = get_logger(__name__)
-
-@monitored_tool(
-    name="DeploySearchConfigurationToProduction",
-    description="Deploys a search configuration to Production OpenSearch",
-)
-def deploy_search_configuration_to_production(search_configuration_id: str) -> str:
-    """
-    Deploys a search configuration to Production by:
-    1. Finding any existing configuration with name "agentic" and deleting it if found
-    2. Getting details of the passed-in configuration
-    3. Creating a new configuration with name "agentic" and values from the passed-in configuration
-
-    Args:
-        search_configuration_id: ID of the search configuration to deploy
-
-    Returns:
-        str: Result of the deploy operation
-    """
-    try:
-        client_manager = get_client_manager()
-        sr_client = client_manager.get_search_relevance_client()
-
-        # Step 1: Find and delete the "agentic" configuration if it exists
-        existing_configs = sr_client.get_search_configurations()
-        agentic_config_id = None
-
-        for hit in existing_configs.get("hits", {}).get("hits", []):
-            config = hit.get("_source", {})
-            if config.get("name") == "agentic":
-                agentic_config_id = hit.get("_id")
-                break
-
-        if agentic_config_id:
-            # Delete the existing "agentic" configuration
-            sr_client.delete_search_configurations(
-                search_configuration_id=agentic_config_id
-            )
-
-        # Step 2: Get the details of the passed-in configuration
-        source_config_details = None
-        existing_configs = sr_client.get_search_configurations()
-        for hit in existing_configs.get("hits", {}).get("hits", []):
-            config = hit.get("_source", {})
-            if hit.get("_id") == search_configuration_id:
-                source_config_details = config
-                break
-
-        if not source_config_details:
-            return format_tool_error("Source configuration not found")
-
-        # Step 3: Create a new configuration with name "agentic" and values from the source
-        new_config_body = {
-            "name": "agentic",
-            "index": source_config_details.get("index", ""),
-            "query": source_config_details.get("query", ""),
-        }
-
-        create_response = sr_client.put_search_configurations(body=new_config_body)
-
-        return json.dumps(
-            {"result": "success", "new_config": create_response},
-            indent=2,
-        )
-    except Exception as e:
-        return log_tool_error(logger, f"Error deploying search configuration: {str(e)}")
-
 
 def _replace_search_text_placeholder(obj: object, query_text: str) -> object:
     """

@@ -11,7 +11,6 @@ from __future__ import annotations
 import os
 
 import boto3
-from botocore.config import Config as BotocoreConfig
 from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
 from strands.models.bedrock import BedrockModel
@@ -87,16 +86,10 @@ def _get_aws_session() -> boto3.Session:
 
 
 def _create_orchestrator_model(inference_profile_arn: str) -> BedrockModel:
-    """Create a BedrockModel for the orchestrator with a 30-minute read timeout."""
-    boto_config = BotocoreConfig(
-        connect_timeout=60,
-        read_timeout=1800,  # 30 minutes — orchestrator coordinates multiple sub-agents
-        retries={"max_attempts": 0},
-    )
+    """Create a BedrockModel for the orchestrator."""
     return BedrockModel(
         model_id=inference_profile_arn,
         boto_session=_get_aws_session(),
-        boto_client_config=boto_config,
         streaming=True,
     )
 
