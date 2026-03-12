@@ -21,17 +21,10 @@ logger = get_logger(__name__)
 # Load environment variables
 load_dotenv()
 
-# Get AWS credentials and region
-AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
-
-# Create boto3 session for Bedrock
-bedrock_session = boto3.Session(
-    aws_access_key_id=AWS_ACCESS_KEY_ID,
-    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-    region_name=AWS_REGION,
-)
+# Create boto3 session using the default AWS credential provider chain.
+# Supports environment variables, ~/.aws/credentials, IAM roles,
+# EC2 instance profiles, ECS task roles, and temporary credentials.
+bedrock_session = boto3.Session()
 
 # create_art_agent() sets BEDROCK_INFERENCE_PROFILE_ARN / BEDROCK_HAIKU_INFERENCE_PROFILE_ARN
 # as defaults *after* this module is imported, so module-level os.getenv() would

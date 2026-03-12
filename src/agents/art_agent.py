@@ -77,12 +77,12 @@ Be helpful, clear, and ensure the user gets complete answers by leveraging the r
 
 
 def _get_aws_session() -> boto3.Session:
-    """Create a boto3 session from environment credentials."""
-    return boto3.Session(
-        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-        region_name=os.getenv("AWS_REGION", "us-east-1"),
-    )
+    """Create a boto3 session using the default AWS credential provider chain.
+
+    Supports environment variables, ~/.aws/credentials, IAM roles,
+    EC2 instance profiles, ECS task roles, and temporary credentials.
+    """
+    return boto3.Session()
 
 
 def _create_orchestrator_model(inference_profile_arn: str) -> BedrockModel:
