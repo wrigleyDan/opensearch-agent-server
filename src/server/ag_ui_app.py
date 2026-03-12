@@ -303,7 +303,7 @@ def create_app(config_override: ServerConfig | None = None) -> FastAPI:
         setup_rate_limiting(app, rate_limiter)
 
         # --- Orchestrator setup: register agent factories ---
-        from agents.art_agent import create_art_agent
+        from agents.art.art_agent import create_art_agent
         from agents.fallback_agent import create_fallback_agent
         from orchestrator.registry import AgentRegistration, AgentRegistry
         from orchestrator.router import PageContextRouter

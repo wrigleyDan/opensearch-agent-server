@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agents import specialized_agents
+from agents.art import specialized_agents
 from helpers.specialized_agents_helpers import (
     patch_evaluation_agent_dependencies,
     patch_hypothesis_agent_dependencies,
@@ -23,7 +23,7 @@ pytestmark = pytest.mark.integration
 @pytest.fixture(autouse=True)
 def mock_get_emitter() -> Generator[None, None, None]:
     """Mock emitter so agent wrappers do not require external context."""
-    with patch("agents.specialized_agents.monitored_tool", side_effect=lambda x: x):
+    with patch("agents.art.specialized_agents.monitored_tool", side_effect=lambda x: x):
         yield
 
 
@@ -53,7 +53,7 @@ class TestSetOpenSearchTools:
     @pytest.mark.asyncio
     async def test_set_opensearch_tools(self):
         """Test that set_opensearch_tools sets the global tools variable."""
-        from agents import specialized_agents
+        from agents.art import specialized_agents
 
         test_tools = [MagicMock(), MagicMock()]
         specialized_agents.set_opensearch_tools(test_tools)
@@ -107,7 +107,7 @@ class TestHypothesisAgent:
     @pytest.mark.asyncio
     async def test_hypothesis_agent_general_error(self):
         """Test that hypothesis_agent handles general errors."""
-        from agents import specialized_agents
+        from agents.art import specialized_agents
 
         specialized_agents._opensearch_tools = [MagicMock()]
 
@@ -128,7 +128,7 @@ class TestEvaluationAgent:
     @pytest.mark.asyncio
     async def test_evaluation_agent_no_tools_configured(self):
         """Test that evaluation_agent returns error when tools not configured."""
-        from agents import specialized_agents
+        from agents.art import specialized_agents
 
         # autouse fixture ensures tools are empty
         result = await specialized_agents.evaluation_agent("test query")
@@ -138,7 +138,7 @@ class TestEvaluationAgent:
     @pytest.mark.asyncio
     async def test_evaluation_agent_success(self):
         """Test that evaluation_agent creates agent and invokes successfully."""
-        from agents import specialized_agents
+        from agents.art import specialized_agents
 
         specialized_agents._opensearch_tools = [MagicMock()]
 
@@ -154,7 +154,7 @@ class TestEvaluationAgent:
     @pytest.mark.asyncio
     async def test_evaluation_agent_rate_limit_error(self):
         """Test that evaluation_agent handles rate limit errors."""
-        from agents import specialized_agents
+        from agents.art import specialized_agents
 
         specialized_agents._opensearch_tools = [MagicMock()]
 
@@ -171,7 +171,7 @@ class TestEvaluationAgent:
     @pytest.mark.asyncio
     async def test_evaluation_agent_general_error(self):
         """Test that evaluation_agent handles general errors (non-rate-limit)."""
-        from agents import specialized_agents
+        from agents.art import specialized_agents
 
         specialized_agents._opensearch_tools = [MagicMock()]
 
@@ -192,7 +192,7 @@ class TestUserBehaviorAnalysisAgent:
     @pytest.mark.asyncio
     async def test_user_behavior_analysis_agent_no_tools_configured(self):
         """Test that user_behavior_analysis_agent returns error when tools not configured."""
-        from agents import specialized_agents
+        from agents.art import specialized_agents
 
         # autouse fixture ensures tools are empty
         result = await specialized_agents.user_behavior_analysis_agent("test query")
@@ -202,7 +202,7 @@ class TestUserBehaviorAnalysisAgent:
     @pytest.mark.asyncio
     async def test_user_behavior_analysis_agent_success(self):
         """Test that user_behavior_analysis_agent creates agent and invokes successfully."""
-        from agents import specialized_agents
+        from agents.art import specialized_agents
 
         specialized_agents._opensearch_tools = [MagicMock()]
 
@@ -218,7 +218,7 @@ class TestUserBehaviorAnalysisAgent:
     @pytest.mark.asyncio
     async def test_user_behavior_analysis_agent_error_handling(self):
         """Test that user_behavior_analysis_agent handles errors."""
-        from agents import specialized_agents
+        from agents.art import specialized_agents
 
         specialized_agents._opensearch_tools = [MagicMock()]
 
@@ -234,7 +234,7 @@ class TestUserBehaviorAnalysisAgent:
     @pytest.mark.asyncio
     async def test_user_behavior_analysis_agent_rate_limit_error(self):
         """Test that user_behavior_analysis_agent handles rate limit errors."""
-        from agents import specialized_agents
+        from agents.art import specialized_agents
 
         specialized_agents._opensearch_tools = [MagicMock()]
 
@@ -258,7 +258,7 @@ class TestSpecializedAgentsErrorHandling:
     @pytest.mark.asyncio
     async def test_hypothesis_agent_tool_failure(self):
         """Test hypothesis agent when tool call fails during execution."""
-        from agents import specialized_agents
+        from agents.art import specialized_agents
 
         specialized_agents._opensearch_tools = [MagicMock()]
 
@@ -285,7 +285,7 @@ class TestSpecializedAgentsErrorHandling:
         """Test evaluation agent timeout handling."""
         import asyncio
 
-        from agents import specialized_agents
+        from agents.art import specialized_agents
 
         specialized_agents._opensearch_tools = [MagicMock()]
 
@@ -311,7 +311,7 @@ class TestSpecializedAgentsErrorHandling:
     @pytest.mark.asyncio
     async def test_user_behavior_agent_missing_data(self):
         """Test user behavior agent with missing UBI data."""
-        from agents import specialized_agents
+        from agents.art import specialized_agents
 
         specialized_agents._opensearch_tools = [MagicMock()]
 
@@ -335,7 +335,7 @@ class TestSpecializedAgentsErrorHandling:
     @pytest.mark.asyncio
     async def test_user_behavior_agent_tool_error_missing_data(self):
         """Test user behavior agent when UBI tools fail due to missing data."""
-        from agents import specialized_agents
+        from agents.art import specialized_agents
 
         specialized_agents._opensearch_tools = [MagicMock()]
 
@@ -357,7 +357,7 @@ class TestSpecializedAgentsErrorHandling:
     @pytest.mark.asyncio
     async def test_agent_initialization_missing_tools(self):
         """Test agent initialization when tools are not available."""
-        from agents import specialized_agents
+        from agents.art import specialized_agents
 
         # Ensure tools are empty (fixture handles this)
         assert specialized_agents._opensearch_tools == []

@@ -16,7 +16,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agents import specialized_agents
+from agents.art import specialized_agents
 from helpers.specialized_agents_helpers import (
     patch_evaluation_agent_dependencies,
     patch_hypothesis_agent_dependencies,
@@ -48,7 +48,7 @@ def reset_opensearch_tools() -> Generator[None, None, None]:
 @pytest.fixture(autouse=True)
 def mock_monitor() -> Generator[None, None, None]:
     """Mock emitter to avoid dependencies."""
-    with patch("agents.specialized_agents.monitored_tool", side_effect=lambda x: x):
+    with patch("agents.art.specialized_agents.monitored_tool", side_effect=lambda x: x):
         yield
 
 
@@ -106,7 +106,7 @@ class TestSpecializedAgentsErrors:
     async def test_user_behavior_agent_missing_data(self):
         """Test user behavior agent with missing UBI data."""
         # Should handle missing data gracefully
-        from agents import specialized_agents
+        from agents.art import specialized_agents
 
         specialized_agents._opensearch_tools = [MagicMock()]
 
@@ -132,7 +132,7 @@ class TestSpecializedAgentsErrors:
     async def test_user_behavior_agent_tool_error_missing_data(self):
         """Test user behavior agent when UBI tools fail due to missing data."""
         # Should handle tool errors due to missing data gracefully
-        from agents import specialized_agents
+        from agents.art import specialized_agents
 
         specialized_agents._opensearch_tools = [MagicMock()]
 
@@ -158,7 +158,7 @@ class TestSpecializedAgentsErrors:
         # Should initialize with available tools, log warnings
         # This tests the scenario where _opensearch_tools is empty
         # The agent should return an error message, not crash
-        from agents import specialized_agents
+        from agents.art import specialized_agents
 
         # Ensure tools are empty (fixture handles this)
         assert specialized_agents._opensearch_tools == []
@@ -179,19 +179,19 @@ class TestSpecializedAgentsErrors:
     async def test_hypothesis_agent_agent_creation_error(self):
         """Test hypothesis agent when Agent creation fails."""
         # Should handle agent creation errors gracefully
-        from agents import specialized_agents
+        from agents.art import specialized_agents
 
         specialized_agents._opensearch_tools = [MagicMock()]
 
         # Simulate Agent creation failure using ExitStack to handle many patches
         stack = ExitStack()
         mock_agent_class = stack.enter_context(
-            patch("agents.specialized_agents.Agent")
+            patch("agents.art.specialized_agents.Agent")
         )
-        stack.enter_context(patch("agents.specialized_agents.BedrockModel"))
-        stack.enter_context(patch("agents.specialized_agents.bedrock_session"))
+        stack.enter_context(patch("agents.art.specialized_agents.BedrockModel"))
+        stack.enter_context(patch("agents.art.specialized_agents.bedrock_session"))
         stack.enter_context(
-            patch("tools.experiment_tools.aggregate_experiment_results")
+            patch("tools.art.experiment_tools.aggregate_experiment_results")
         )
 
         try:
@@ -211,7 +211,7 @@ class TestSpecializedAgentsErrors:
     async def test_evaluation_agent_connection_error(self):
         """Test evaluation agent when connection to Bedrock fails."""
         # Should handle connection errors gracefully
-        from agents import specialized_agents
+        from agents.art import specialized_agents
 
         specialized_agents._opensearch_tools = [MagicMock()]
 
@@ -227,4 +227,3 @@ class TestSpecializedAgentsErrors:
             assert "Error in evaluation" in result
             assert "connect" in result.lower() or "bedrock" in result.lower()
             mock_agent.invoke_async.assert_called_once()
-

@@ -16,7 +16,7 @@ from strands import Agent
 from strands.models.bedrock import BedrockModel
 from strands.tools.mcp import MCPClient
 
-from agents.specialized_agents import (
+from agents.art.specialized_agents import (
     evaluation_agent,
     hypothesis_agent,
     set_opensearch_tools,
