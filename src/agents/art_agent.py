@@ -94,7 +94,9 @@ def _create_orchestrator_model(inference_profile_arn: str) -> BedrockModel:
     )
 
 
-def create_art_agent(opensearch_url: str) -> Agent:
+def create_art_agent(
+    opensearch_url: str, headers: dict[str, str] | None = None
+) -> Agent:
     """Create the ART orchestrator agent.
 
     Initializes the MCP connection to OpenSearch via MCPClient, configures the
@@ -102,6 +104,7 @@ def create_art_agent(opensearch_url: str) -> Agent:
 
     Args:
         opensearch_url: OpenSearch cluster URL.
+        headers: Optional HTTP headers to forward to the MCP server (e.g. auth headers).
 
     Returns:
         A Strands Agent configured as the ART orchestrator.
@@ -132,7 +135,7 @@ def create_art_agent(opensearch_url: str) -> Agent:
 
     mcp_server_url = os.getenv("MCP_SERVER_URL", DEFAULT_MCP_SERVER_URL)
 
-    mcp_client = MCPClient(lambda: streamablehttp_client(mcp_server_url))
+    mcp_client = MCPClient(lambda: streamablehttp_client(mcp_server_url, headers=headers))
     mcp_client.start()
 
     log_info_event(
