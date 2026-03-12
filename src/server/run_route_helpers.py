@@ -497,6 +497,11 @@ async def yield_events_from_queue(
                         consecutive_timeouts=consecutive_timeouts,
                     )
                     break
+                # Send a heartbeat comment every 10s to keep the SSE connection alive
+                # through proxies and browsers that close idle connections.
+                # SSE comments (": ...") are ignored by clients but reset proxy idle timers.
+                if consecutive_timeouts % 100 == 0:
+                    yield ": keep-alive\n\n"
                 continue
 
         # If there was an error, raise it

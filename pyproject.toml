@@ -13,6 +13,7 @@ dependencies = [
     "opensearch-py",
     "mcp",
     "strands-agents[ollama,otel]",
+    "openinference-instrumentation-bedrock",
     "python-dotenv",
     "opensearch-mcp-server-py",
     "ag-ui-protocol",

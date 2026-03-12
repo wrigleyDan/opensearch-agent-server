@@ -89,6 +89,13 @@ You do not need any judgments for sanity checks.
 You only run pairwise experiments to assess how the search results change by implementing
 the hypothesis. A quantitative change on its own does not automatically mean improved quality.
 
+Analyzing experiment results:
+  - ALWAYS use AggregateExperimentResultsTool to compute metrics from experiment data.
+  - NEVER compute averages or aggregate metrics yourself — arithmetic errors are likely.
+  - For PAIRWISE_COMPARISON: pass the JSON output of GetExperimentTool directly to AggregateExperimentResultsTool as experiment_data.
+  - For POINTWISE_EVALUATION: pass the GetExperimentTool output as experiment_data AND the SearchIndexTool results from the search-relevance-evaluation-result index (filtered by experimentId) as
+  evaluation_results.
+
 Be concise, strict about following the process, ask for information where necessary, be specific,
 data-driven, and provide clear explanations for your hypotheses.
 """
@@ -141,6 +148,13 @@ Creating search configurations:
   }
 }
 ```
+
+Analyzing experiment results:
+  - ALWAYS use AggregateExperimentResultsTool to compute metrics from experiment data.
+  - NEVER compute averages or aggregate metrics yourself — arithmetic errors are likely.
+  - For PAIRWISE_COMPARISON: pass the JSON output of GetExperimentTool directly to AggregateExperimentResultsTool as experiment_data.
+  - For POINTWISE_EVALUATION: pass the GetExperimentTool output as experiment_data AND the SearchIndexTool results from the search-relevance-evaluation-result index (filtered by experimentId) as
+  evaluation_results.
 
 Be concise, rigorous, quantitative, and provide actionable insights based on evaluation results.
 """
@@ -207,21 +221,10 @@ async def hypothesis_agent(query: str) -> str:
         return "Error: OpenSearch tools not configured. Please initialize MCP connection first."
 
     try:
-        # Import UBI analytics tools
         # Import experimentation tools. This agent is meant to do only sanity checks,
         # so we don't need all experiment tools.
         from tools.experiment_tools import (
-            get_experiment_results,
-        )
-        from tools.search_configuration_tools import (
-            execute_search_with_configuration,
-        )
-        from tools.ubi_analytics_tools import (
-            get_document_ctr,
-            get_query_ctr,
-            get_query_performance_metrics,
-            get_top_documents_by_engagement,
-            get_top_queries_by_engagement,
+            aggregate_experiment_results,
         )
 
         model = BedrockModel(
@@ -230,20 +233,11 @@ async def hypothesis_agent(query: str) -> str:
             streaming=True,
         )
 
-        # Combine UBI analytics tools with utility tools
         hypothesis_tools = [
             # OpenSearch MCP tools
             *_opensearch_tools,
-            # UBI analytics tools
-            get_query_ctr,
-            get_document_ctr,
-            get_query_performance_metrics,
-            get_top_queries_by_engagement,
-            get_top_documents_by_engagement,
-            # Search configuration tools
-            execute_search_with_configuration,
             # Experiment tools
-            get_experiment_results,
+            aggregate_experiment_results,
         ]
 
         # Create specialized agent with OpenSearch and UBI tools
@@ -286,13 +280,7 @@ async def evaluation_agent(query: str) -> str:
     try:
         # Import evaluation-specific tools
         from tools.experiment_tools import (
-            get_experiment_results,
-        )
-        from tools.judgment_list_tools import (
-            extract_pairs_from_pairwise_experiment,
-        )
-        from tools.search_configuration_tools import (
-            execute_search_with_configuration,
+            aggregate_experiment_results,
         )
 
         model = BedrockModel(
@@ -305,12 +293,8 @@ async def evaluation_agent(query: str) -> str:
         evaluation_tools = [
             # OpenSearch MCP tools
             *_opensearch_tools,
-            # Judgment tools
-            extract_pairs_from_pairwise_experiment,
-            # Search configuration tools
-            execute_search_with_configuration,
             # Experiment tools
-            get_experiment_results,
+            aggregate_experiment_results,
         ]
 
         # Create specialized agent with all necessary tools
@@ -351,31 +335,15 @@ async def user_behavior_analysis_agent(query: str) -> str:
         return "Error: OpenSearch tools not configured. Please initialize MCP connection first."
 
     try:
-        # Import UBI analytics tools
-        # from tools.ubi_analytics_tools import (
-        #     get_document_ctr,
-        #     get_query_ctr,
-        #     get_query_performance_metrics,
-        #     get_top_documents_by_engagement,
-        #     get_top_queries_by_engagement,
-        # )
-
         model = BedrockModel(
             model_id=os.getenv("BEDROCK_HAIKU_INFERENCE_PROFILE_ARN"),
             boto_session=bedrock_session,
             streaming=True,
         )
 
-        # Combine UBI analytics tools with utility tools
         ubi_tools = [
             # OpenSearch MCP tools
             *_opensearch_tools,
-            # UBI analytics tools
-            # get_query_ctr,
-            # get_document_ctr,
-            # get_query_performance_metrics,
-            # get_top_queries_by_engagement,
-            # get_top_documents_by_engagement,
         ]
 
         # Create specialized agent with UBI analytics focus

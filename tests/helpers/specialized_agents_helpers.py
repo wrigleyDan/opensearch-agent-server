@@ -25,23 +25,7 @@ def patch_hypothesis_agent_dependencies(mock_agent: MagicMock) -> ExitStack:
     )
     stack.enter_context(patch("agents.specialized_agents.BedrockModel"))
     stack.enter_context(patch("agents.specialized_agents.bedrock_session"))
-    stack.enter_context(patch("tools.ubi_analytics_tools.get_query_ctr"))
-    stack.enter_context(patch("tools.ubi_analytics_tools.get_document_ctr"))
-    stack.enter_context(
-        patch("tools.ubi_analytics_tools.get_query_performance_metrics")
-    )
-    stack.enter_context(
-        patch("tools.ubi_analytics_tools.get_top_queries_by_engagement")
-    )
-    stack.enter_context(
-        patch("tools.ubi_analytics_tools.get_top_documents_by_engagement")
-    )
-    stack.enter_context(
-        patch(
-            "tools.search_configuration_tools.execute_search_with_configuration"
-        )
-    )
-    stack.enter_context(patch("tools.experiment_tools.get_experiment_results"))
+    stack.enter_context(patch("tools.experiment_tools.aggregate_experiment_results"))
     return stack
 
 
@@ -60,15 +44,7 @@ def patch_evaluation_agent_dependencies(mock_agent: MagicMock) -> ExitStack:
     )
     stack.enter_context(patch("agents.specialized_agents.BedrockModel"))
     stack.enter_context(patch("agents.specialized_agents.bedrock_session"))
-    stack.enter_context(
-        patch("tools.judgment_list_tools.extract_pairs_from_pairwise_experiment")
-    )
-    stack.enter_context(
-        patch(
-            "tools.search_configuration_tools.execute_search_with_configuration"
-        )
-    )
-    stack.enter_context(patch("tools.experiment_tools.get_experiment_results"))
+    stack.enter_context(patch("tools.experiment_tools.aggregate_experiment_results"))
     return stack
 
 
@@ -87,15 +63,4 @@ def patch_ubi_agent_dependencies(mock_agent: MagicMock) -> ExitStack:
     )
     stack.enter_context(patch("agents.specialized_agents.BedrockModel"))
     stack.enter_context(patch("agents.specialized_agents.bedrock_session"))
-    stack.enter_context(patch("tools.ubi_analytics_tools.get_query_ctr"))
-    stack.enter_context(patch("tools.ubi_analytics_tools.get_document_ctr"))
-    stack.enter_context(
-        patch("tools.ubi_analytics_tools.get_query_performance_metrics")
-    )
-    stack.enter_context(
-        patch("tools.ubi_analytics_tools.get_top_queries_by_engagement")
-    )
-    stack.enter_context(
-        patch("tools.ubi_analytics_tools.get_top_documents_by_engagement")
-    )
     return stack

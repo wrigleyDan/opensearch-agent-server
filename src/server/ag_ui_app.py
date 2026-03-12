@@ -74,11 +74,12 @@ from server.run_routes import (  # noqa: E402
 )
 
 def _init_tracing() -> None:
-    """Initialize Strands native OpenTelemetry tracing.
+    """Initialize OpenTelemetry tracing.
 
-    Reads OTEL_EXPORTER_OTLP_ENDPOINT from the environment and configures
-    the Strands SDK telemetry exporter. Instruments agent invocations,
-    tool calls, and model requests automatically.
+    Reads OTEL_EXPORTER_OTLP_ENDPOINT from the environment and configures:
+    - Strands SDK telemetry: agent invocations and tool call spans
+    - OpenInference Bedrock instrumentation: message content, tool inputs/outputs
+      in Phoenix-compatible OpenInference format
     """
     try:
         from strands.telemetry import StrandsTelemetry
@@ -95,6 +96,24 @@ def _init_tracing() -> None:
             logger,
             f"✗ OpenTelemetry tracing not available (missing strands-agents[otel]): {e}",
             "ag_ui.tracing_unavailable",
+            error=str(e),
+        )
+        return
+
+    try:
+        from openinference.instrumentation.bedrock import BedrockInstrumentor
+
+        BedrockInstrumentor().instrument()
+        log_info_event(
+            logger,
+            "✓ Bedrock instrumentation enabled: message content and tool I/O will appear in traces",
+            "ag_ui.bedrock_instrumentation_enabled",
+        )
+    except ImportError as e:
+        log_warning_event(
+            logger,
+            f"✗ Bedrock instrumentation not available (missing openinference-instrumentation-bedrock): {e}",
+            "ag_ui.bedrock_instrumentation_unavailable",
             error=str(e),
         )
 

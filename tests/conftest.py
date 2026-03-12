@@ -3,11 +3,7 @@ Pytest configuration and shared fixtures for opensearch-agent-server tests.
 """
 
 import os
-from collections.abc import Callable, Generator
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from utils.opensearch_client import OpenSearchClientManager
+from collections.abc import Callable
 
 import pytest
 
@@ -55,44 +51,3 @@ def test_opensearch_url() -> str:
     return os.getenv("TEST_OPENSEARCH_URL", "http://localhost:9200")
 
 
-@pytest.fixture
-def opensearch_client(
-    test_opensearch_url: str,
-) -> Generator["OpenSearchClientManager", None, None]:
-    """Provide an OpenSearch client connected to a live instance.
-
-    Skips the test automatically if OpenSearch is not reachable.
-    Start OpenSearch locally with:
-        docker compose -f docker-compose.yml up -d
-    """
-    from utils.opensearch_client import OpenSearchClientManager
-
-    username = os.getenv("OPENSEARCH_USERNAME", "")
-    password = os.getenv("OPENSEARCH_PASSWORD", "")
-
-    try:
-        client_manager = OpenSearchClientManager(
-            opensearch_url=test_opensearch_url,
-            username=username,
-            password=password,
-            verify_certs=False,
-        )
-        client = client_manager.connect()
-        try:
-            client.info()
-        except Exception as conn_error:
-            pytest.skip(
-                f"OpenSearch not running at {test_opensearch_url}: "
-                f"{type(conn_error).__name__}: {conn_error}"
-            )
-        yield client_manager
-    except (ConnectionError, TimeoutError, OSError) as e:
-        pytest.skip(
-            f"OpenSearch not running at {test_opensearch_url}: "
-            f"{type(e).__name__}: {e}"
-        )
-    except Exception as e:
-        pytest.fail(
-            f"Failed to connect to OpenSearch at {test_opensearch_url}: "
-            f"{type(e).__name__}: {e}"
-        )
