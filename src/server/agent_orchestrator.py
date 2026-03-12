@@ -1,7 +1,10 @@
 """Agent Orchestrator — routes requests to AG-UI Strands agent wrappers.
 
-Creates ``ag_ui_strands.StrandsAgent`` wrappers per-request so that
-per-request HTTP headers (e.g. Authorization) can be forwarded to the
+``ag_ui_strands.StrandsAgent`` instances are created once per agent name and
+then cached so that the per-thread ``StrandsAgentCore`` (and its
+``ConversationManager``) survives across requests, giving the agent persistent
+conversation memory.  The first request for each agent name passes its HTTP
+headers (e.g. Authorization) to the factory so they can be forwarded to the
 MCP server.  The outer shell (routing, auth, persistence, SSE encoding,
 cancellation) remains custom; this module is the thin glue between the
 router and the off-the-shelf AG-UI event conversion layer.
@@ -90,12 +93,16 @@ class AgentOrchestrator:
     (e.g. ``Authorization``) to be forwarded to the MCP server.
 
     ``run()`` resolves the agent name via :class:`PageContextRouter`,
-    creates an agent from the factory, wraps it in ``AGUIStrandsAgent``,
-    and yields AG-UI events.
+    retrieves or creates an ``AGUIStrandsAgent`` for the resolved name, and
+    yields AG-UI events.  ``AGUIStrandsAgent`` instances are cached so their
+    internal ``_agents_by_thread`` dict (which holds a ``StrandsAgentCore``
+    per conversation thread) survives across requests, giving the agent
+    persistent conversation memory.
     """
 
     def __init__(self, router: PageContextRouter) -> None:
         self._agent_factories: dict[str, dict[str, Any]] = {}
+        self._cached_agui_agents: dict[str, AGUIStrandsAgent] = {}
         self._router = router
 
     def register_agent_factory(
@@ -141,8 +148,9 @@ class AgentOrchestrator:
         Args:
             input_data: AG-UI ``RunAgentInput``.
             agent_name: Explicit agent name (skips routing).
-            headers: Optional HTTP headers to forward to the MCP server
-                (e.g. Authorization for OpenSearch authentication).
+            headers: Optional HTTP headers to forward to the MCP server on
+                first agent creation (e.g. Authorization for OpenSearch
+                authentication).  Ignored once the agent is cached.
 
         Yields:
             AG-UI protocol events.
@@ -166,23 +174,36 @@ class AgentOrchestrator:
                 f"Available: {list(self._agent_factories)}"
             )
 
-        # Create a fresh agent with the request's auth headers
-        strands_agent = factory_info["factory"](headers)
-        agui_agent = AGUIStrandsAgent(
-            agent=strands_agent,
-            name=agent_name,
-            description=factory_info["description"],
-            config=factory_info["config"],
-        )
-
-        log_debug_event(
-            logger,
-            f"Created per-request agent '{agent_name}' "
-            f"(with_auth_headers={headers is not None})",
-            "orchestrator.agent_created",
-            agent_name=agent_name,
-            with_auth_headers=headers is not None,
-        )
+        # Reuse a cached AGUIStrandsAgent so that its _agents_by_thread dict
+        # (and the Strands ConversationManager inside each per-thread agent)
+        # persists across requests.  On first use, the factory is called with
+        # the caller's auth headers to initialise the MCP connection; those
+        # headers are reused for the lifetime of the cached agent.
+        agui_agent = self._cached_agui_agents.get(agent_name)
+        if agui_agent is None:
+            strands_agent = factory_info["factory"](headers)
+            agui_agent = AGUIStrandsAgent(
+                agent=strands_agent,
+                name=agent_name,
+                description=factory_info["description"],
+                config=factory_info["config"],
+            )
+            self._cached_agui_agents[agent_name] = agui_agent
+            log_debug_event(
+                logger,
+                f"Created and cached agent '{agent_name}' "
+                f"(with_auth_headers={headers is not None})",
+                "orchestrator.agent_created",
+                agent_name=agent_name,
+                with_auth_headers=headers is not None,
+            )
+        else:
+            log_debug_event(
+                logger,
+                f"Reusing cached agent '{agent_name}'",
+                "orchestrator.agent_reused",
+                agent_name=agent_name,
+            )
 
         async for event in agui_agent.run(input_data):
             yield event
