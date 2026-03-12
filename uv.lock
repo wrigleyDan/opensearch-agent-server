@@ -494,15 +494,6 @@ wheels = [
 ]
 
 [[package]]
-name = "dacite"
-version = "1.9.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/55/a0/7ca79796e799a3e782045d29bf052b5cde7439a2bbb17f15ff44f7aacc63/dacite-1.9.2.tar.gz", hash = "sha256:6ccc3b299727c7aa17582f0021f6ae14d5de47c7227932c47fec4cdfefd26f09", size = 22420, upload_time = "2025-02-05T09:27:29.757Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/94/35/386550fd60316d1e37eccdda609b074113298f23cef5bddb2049823fe666/dacite-1.9.2-py3-none-any.whl", hash = "sha256:053f7c3f5128ca2e9aceb66892b1a3c8936d02c686e707bee96e19deef4bc4a0", size = 16600, upload_time = "2025-02-05T09:27:24.345Z" },
-]
-
-[[package]]
 name = "deprecated"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1105,49 +1096,6 @@ wheels = [
 ]
 
 [[package]]
-name = "openinference-instrumentation"
-version = "0.1.46"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "openinference-semantic-conventions" },
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-sdk" },
-    { name = "wrapt" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/64/8d/9b76b43e8b2ee2ccf1fe15b21c924095f9c0e4839919bcd4951b1c99c2ab/openinference_instrumentation-0.1.46.tar.gz", hash = "sha256:0b520002a1c682c525dcab49005c209bfd71611e8e4e4933b49779d5e899e6db", size = 23937, upload_time = "2026-03-04T10:13:48.883Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/25/d1/f6668492152a4180492044313e2dc427fbc237904f6bb1629abd030e3469/openinference_instrumentation-0.1.46-py3-none-any.whl", hash = "sha256:f7b63ccd5f93ce82e4e40035c9faa6b021984cbe06ad791f4cf033551533bc48", size = 30124, upload_time = "2026-03-04T10:13:47.613Z" },
-]
-
-[[package]]
-name = "openinference-instrumentation-bedrock"
-version = "0.1.33"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "dacite" },
-    { name = "openinference-instrumentation" },
-    { name = "openinference-semantic-conventions" },
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-semantic-conventions" },
-    { name = "typing-extensions" },
-    { name = "wrapt" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/b0/59/036a79bfc1c2850ddf4d728fb3a987dce5bf86ecc956c7437ca5213911ed/openinference_instrumentation_bedrock-0.1.33.tar.gz", hash = "sha256:6180627a25f6a8da94b82b02cb61e3a80b7f4e6d4a6e8ba98549d0716b8e5fca", size = 212109, upload_time = "2026-02-24T05:59:45.87Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a9/ba/653be68e33b49cec996eee323c6d42d3ad555d2307ad8c17666df867f2fc/openinference_instrumentation_bedrock-0.1.33-py3-none-any.whl", hash = "sha256:d5b8516f234b3f15b6ff590c3a8be6b2b94526b6d6fb72e35e1d0f1d27d08783", size = 66025, upload_time = "2026-02-24T05:59:43.351Z" },
-]
-
-[[package]]
-name = "openinference-semantic-conventions"
-version = "0.1.27"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/b4/cf/7c0ea344b99ecdb9f55cb5287ecb6a6ad68e6098df32728691fa7846f112/openinference_semantic_conventions-0.1.27.tar.gz", hash = "sha256:db0b1bbc1cd66f8108b17f972976fa1833413a01967ff930e2707a77e0f66bd3", size = 12744, upload_time = "2026-03-04T08:38:56.974Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/27/b4/1c218ed1e68c8fbd68f37258ce40f908cdad86ee9d38b12c48c9e4c4e030/openinference_semantic_conventions-0.1.27-py3-none-any.whl", hash = "sha256:3871fd2cc9d203bdb444ab66ff2ba9bdbf1013dc48c64c5700dd449d47b338c5", size = 10430, upload_time = "2026-03-04T08:38:56.166Z" },
-]
-
-[[package]]
 name = "opensearch-agent-server"
 version = "0.1.0"
 source = { editable = "." }
@@ -1158,11 +1106,8 @@ dependencies = [
     { name = "fastapi" },
     { name = "jsonpatch" },
     { name = "mcp" },
-    { name = "openinference-instrumentation-bedrock" },
     { name = "opensearch-mcp-server-py" },
     { name = "opensearch-py" },
-    { name = "opentelemetry-exporter-otlp-proto-http" },
-    { name = "opentelemetry-sdk" },
     { name = "pydantic-settings" },
     { name = "pyjwt" },
     { name = "python-dotenv" },
@@ -1170,7 +1115,7 @@ dependencies = [
     { name = "slowapi" },
     { name = "sqlalchemy" },
     { name = "sse-starlette" },
-    { name = "strands-agents", extra = ["ollama"] },
+    { name = "strands-agents", extra = ["ollama", "otel"] },
     { name = "uvicorn" },
 ]
 
@@ -1196,11 +1141,8 @@ requires-dist = [
     { name = "jsonpatch", specifier = ">=1.33" },
     { name = "mcp" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
-    { name = "openinference-instrumentation-bedrock" },
     { name = "opensearch-mcp-server-py" },
     { name = "opensearch-py" },
-    { name = "opentelemetry-exporter-otlp-proto-http" },
-    { name = "opentelemetry-sdk" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
     { name = "pyjwt", specifier = ">=2.8.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4.0" },
@@ -1214,7 +1156,7 @@ requires-dist = [
     { name = "slowapi" },
     { name = "sqlalchemy", specifier = ">=2.0.0" },
     { name = "sse-starlette" },
-    { name = "strands-agents", extras = ["ollama"] },
+    { name = "strands-agents", extras = ["ollama", "otel"] },
     { name = "uvicorn" },
 ]
 provides-extras = ["dev"]
@@ -2087,6 +2029,9 @@ wheels = [
 [package.optional-dependencies]
 ollama = [
     { name = "ollama" },
+]
+otel = [
+    { name = "opentelemetry-exporter-otlp-proto-http" },
 ]
 
 [[package]]

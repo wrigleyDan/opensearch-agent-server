@@ -73,39 +73,27 @@ from server.run_routes import (  # noqa: E402
     get_run_route,
 )
 
-def _init_tracing(otlp_endpoint: str) -> None:
-    """Initialize OpenTelemetry tracing with an OTLP exporter.
+def _init_tracing() -> None:
+    """Initialize Strands native OpenTelemetry tracing.
 
-    Instruments Bedrock LLM calls via openinference so that all agent
-    invocations, tool calls, and LLM requests appear as spans in the
-    connected observability backend (e.g. Arize Phoenix, Jaeger, Grafana Tempo).
-
-    Args:
-        otlp_endpoint: Base URL of the OTLP collector, e.g. http://localhost:6006.
-                       The /v1/traces path is appended automatically.
+    Reads OTEL_EXPORTER_OTLP_ENDPOINT from the environment and configures
+    the Strands SDK telemetry exporter. Instruments agent invocations,
+    tool calls, and model requests automatically.
     """
     try:
-        from openinference.instrumentation.bedrock import BedrockInstrumentor
-        from opentelemetry import trace
-        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-        from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+        from strands.telemetry import StrandsTelemetry
 
-        exporter = OTLPSpanExporter(endpoint=f"{otlp_endpoint.rstrip('/')}/v1/traces")
-        provider = TracerProvider()
-        provider.add_span_processor(BatchSpanProcessor(exporter))
-        trace.set_tracer_provider(provider)
-        BedrockInstrumentor().instrument()
+        StrandsTelemetry().setup_otlp_exporter()
         log_info_event(
             logger,
-            f"✓ OpenTelemetry tracing enabled: {otlp_endpoint}",
+            f"✓ OpenTelemetry tracing enabled: {os.environ['OTEL_EXPORTER_OTLP_ENDPOINT']}",
             "ag_ui.tracing_enabled",
-            otlp_endpoint=otlp_endpoint,
+            otlp_endpoint=os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"],
         )
     except ImportError as e:
         log_warning_event(
             logger,
-            f"✗ OpenTelemetry tracing not available (missing dependency): {e}",
+            f"✗ OpenTelemetry tracing not available (missing strands-agents[otel]): {e}",
             "ag_ui.tracing_unavailable",
             error=str(e),
         )
@@ -254,8 +242,8 @@ def create_app(config_override: ServerConfig | None = None) -> FastAPI:
         loop = asyncio.get_running_loop()
         _register_mcp_cancel_scope_exception_handler(loop)
 
-        if otlp_endpoint := os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
-            _init_tracing(otlp_endpoint)
+        if os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
+            _init_tracing()
 
         from server.config import validate_config_on_startup
 

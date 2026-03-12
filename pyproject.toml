@@ -12,7 +12,7 @@ requires-python = ">=3.12"
 dependencies = [
     "opensearch-py",
     "mcp",
-    "strands-agents[ollama]",
+    "strands-agents[ollama,otel]",
     "python-dotenv",
     "opensearch-mcp-server-py",
     "ag-ui-protocol",
@@ -27,9 +27,6 @@ dependencies = [
     "sqlalchemy>=2.0.0",
     "aiosqlite",
     "ag-ui-strands>=0.1.1",
-    "opentelemetry-sdk",
-    "opentelemetry-exporter-otlp-proto-http",
-    "openinference-instrumentation-bedrock",
 ]
 
 [project.optional-dependencies]
