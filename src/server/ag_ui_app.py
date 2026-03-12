@@ -317,7 +317,7 @@ def create_app(config_override: ServerConfig | None = None) -> FastAPI:
             description="Search Relevance Testing agent (ART) — hypothesis generation, "
             "evaluation, UBI analysis, and online A/B testing",
             page_contexts=["search-relevance", "searchRelevance"],
-            is_fallback=True,
+            is_fallback=False,
         ))
 
         # Register fallback agent (handles all unmatched page contexts)
@@ -325,7 +325,7 @@ def create_app(config_override: ServerConfig | None = None) -> FastAPI:
             name="fallback",
             description="General OpenSearch assistant with MCP tools",
             page_contexts=[],
-            is_fallback=False,
+            is_fallback=True,
         ))
 
         log_info_event(
