@@ -303,7 +303,6 @@ def create_app(config_override: ServerConfig | None = None) -> FastAPI:
         setup_rate_limiting(app, rate_limiter)
 
         # --- Orchestrator setup: register agent factories ---
-        from agents.art.art_agent import create_art_agent
         from agents.fallback_agent import create_fallback_agent
         from orchestrator.registry import AgentRegistration, AgentRegistry
         from orchestrator.router import PageContextRouter
@@ -311,14 +310,35 @@ def create_app(config_override: ServerConfig | None = None) -> FastAPI:
         registry = AgentRegistry()
         opensearch_url = config_resolved.opensearch_url
 
-        # Register ART agent (search relevance page)
-        registry.register(AgentRegistration(
-            name="art",
-            description="Search Relevance Testing agent (ART) — hypothesis generation, "
-            "evaluation, UBI analysis, and online A/B testing",
-            page_contexts=["search-relevance", "searchRelevance"],
-            is_fallback=False,
-        ))
+        # Try to load the ART agent.  Its dependencies (strands-agents, boto3,
+        # mcp) are required in pyproject.toml, but a broken install or missing
+        # optional system dependency could still cause an ImportError at startup.
+        # In that case we skip ART and let the fallback agent handle everything.
+        try:
+            from agents.art.art_agent import create_art_agent
+
+            registry.register(AgentRegistration(
+                name="art",
+                description="Search Relevance Testing agent (ART) — hypothesis generation, "
+                "evaluation, UBI analysis, and online A/B testing",
+                page_contexts=["search-relevance", "searchRelevance"],
+                is_fallback=False,
+            ))
+            _art_agent_available = True
+            log_info_event(
+                logger,
+                "✓ ART agent loaded",
+                "ag_ui.art_agent_loaded",
+            )
+        except ImportError as e:
+            _art_agent_available = False
+            log_warning_event(
+                logger,
+                f"✗ ART agent not available (missing dependency: {e}). "
+                "Server will run with fallback agent only.",
+                "ag_ui.art_agent_unavailable",
+                error=str(e),
+            )
 
         # Register fallback agent (handles all unmatched page contexts)
         registry.register(AgentRegistration(
@@ -360,19 +380,20 @@ def create_app(config_override: ServerConfig | None = None) -> FastAPI:
             "ag_ui.fallback_agent_factory_ready",
         )
 
-        # Register ART agent factory
-        orchestrator.register_agent_factory(
-            name="art",
-            factory=lambda headers: create_art_agent(
-                opensearch_url, headers=headers
-            ),
-            description="Search Relevance Testing agent (ART)",
-        )
-        log_info_event(
-            logger,
-            "✓ ART agent factory registered",
-            "ag_ui.art_agent_factory_ready",
-        )
+        # Register ART agent factory only if the import succeeded
+        if _art_agent_available:
+            orchestrator.register_agent_factory(
+                name="art",
+                factory=lambda headers: create_art_agent(
+                    opensearch_url, headers=headers
+                ),
+                description="Search Relevance Testing agent (ART)",
+            )
+            log_info_event(
+                logger,
+                "✓ ART agent factory registered",
+                "ag_ui.art_agent_factory_ready",
+            )
 
         yield
 
