@@ -8,10 +8,3 @@ tool_filters:
     allow_write: true
   enabled_categories:
     - search_relevance
-  enabled_tools:
-    - ListIndexTool
-    - SearchIndexTool
-    - CountTool
-    - ExplainTool
-    - DataDistributionTool
-    - LogPatternAnalysisTool
