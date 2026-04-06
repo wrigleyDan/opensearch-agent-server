@@ -11,13 +11,11 @@ from __future__ import annotations
 import os
 
 import boto3
-import httpx
-from mcp.client.streamable_http import streamable_http_client
+from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
 from strands.models.bedrock import BedrockModel
 from strands.tools.mcp import MCPClient
 
-from agents.default_agent import _MutableHeaders
 from agents.art.specialized_agents import (
     evaluation_agent,
     hypothesis_agent,
@@ -137,20 +135,7 @@ def create_art_agent(
 
     mcp_server_url = os.getenv("MCP_SERVER_URL", DEFAULT_MCP_SERVER_URL)
 
-    mutable_headers = _MutableHeaders(headers)
-
-    http_client = httpx.AsyncClient(
-        headers=mutable_headers.headers or {},
-        timeout=httpx.Timeout(30, read=300),
-        verify=False,
-        follow_redirects=True,
-    )
-    mutable_headers.httpx_client = http_client
-
-    mcp_client = MCPClient(
-        lambda: streamable_http_client(mcp_server_url, http_client=http_client)
-    )
-    mcp_client.start()
+    mcp_client = MCPClient(lambda: streamablehttp_client(mcp_server_url, headers=headers))
 
     log_info_event(
         logger,
@@ -173,9 +158,6 @@ def create_art_agent(
             evaluation_agent,
         ],
     )
-
-    orchestrator._mcp_client = mcp_client  # prevent GC
-    orchestrator._mutable_headers = mutable_headers  # expose for header refresh
 
     log_info_event(
         logger,

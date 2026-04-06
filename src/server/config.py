@@ -228,11 +228,10 @@ class ServerConfig(BaseSettings):
         "Increased to match longest agent timeout (orchestrator/evaluation: 1800s)",
     )
     max_consecutive_timeouts: int = Field(
-        default=1800,
+        default=600,
         ge=1,
         description="Maximum consecutive timeouts before considering stream stuck. "
-        "1800 * 0.1s = 180 seconds (3 minutes) of no events. "
-        "Increased to accommodate complex ART agent tool calls.",
+        "600 * 0.1s = 60 seconds (1 minute) of no events",
     )
 
     # Event Queue Timeout Configuration
