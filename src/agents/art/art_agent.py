@@ -11,7 +11,8 @@ from __future__ import annotations
 import os
 
 import boto3
-from mcp.client.streamable_http import streamablehttp_client
+import httpx
+from mcp.client.streamable_http import streamable_http_client
 from strands import Agent
 from strands.models.bedrock import BedrockModel
 from strands.tools.mcp import MCPClient
@@ -23,6 +24,7 @@ from agents.art.specialized_agents import (
     user_behavior_analysis_agent,
 )
 from utils.logging_helpers import get_logger, log_info_event
+from utils.obo_context import OboAuth
 
 logger = get_logger(__name__)
 
@@ -94,17 +96,19 @@ def _create_orchestrator_model(inference_profile_arn: str) -> BedrockModel:
     )
 
 
-def create_art_agent(
-    opensearch_url: str, headers: dict[str, str] | None = None
-) -> Agent:
+def create_art_agent(opensearch_url: str) -> Agent:
     """Create the ART orchestrator agent.
 
     Initializes the MCP connection to OpenSearch via MCPClient, configures the
     specialized sub-agents with the resulting tools, and returns the orchestrator Agent.
 
+    Authentication is handled by :class:`~utils.obo_context.OboAuth`.
+    The orchestrator calls ``obo_auth.set_token()`` before each run to
+    inject the OBO token.  The token is stored behind a threading lock
+    so it is accessible from the MCP client's background thread.
+
     Args:
         opensearch_url: OpenSearch cluster URL.
-        headers: Optional HTTP headers to forward to the MCP server (e.g. auth headers).
 
     Returns:
         A Strands Agent configured as the ART orchestrator.
@@ -135,7 +139,22 @@ def create_art_agent(
 
     mcp_server_url = os.getenv("MCP_SERVER_URL", DEFAULT_MCP_SERVER_URL)
 
-    mcp_client = MCPClient(lambda: streamablehttp_client(mcp_server_url, headers=headers))
+    # OboAuth injects the OBO token into every outgoing httpx request.
+    # The token is set by the orchestrator before each agent run via
+    # set_token() and stored behind a threading.Lock — so the MCP
+    # client's background thread can read it safely.
+    obo_auth = OboAuth()
+    http_client = httpx.AsyncClient(
+        auth=obo_auth,
+        timeout=httpx.Timeout(30, read=300),
+        verify=False,
+        follow_redirects=True,
+    )
+
+    mcp_client = MCPClient(
+        lambda: streamable_http_client(mcp_server_url, http_client=http_client)
+    )
+    mcp_client.start()
 
     log_info_event(
         logger,
@@ -158,6 +177,11 @@ def create_art_agent(
             evaluation_agent,
         ],
     )
+
+    # Keep references to prevent GC from closing the MCP session and
+    # to allow the orchestrator to set tokens on subsequent requests.
+    orchestrator._mcp_client = mcp_client  # prevent GC
+    orchestrator._obo_auth = obo_auth  # expose for token refresh
 
     log_info_event(
         logger,
