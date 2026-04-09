@@ -26,6 +26,7 @@ sys.path.insert(0, _src_dir)
 from tools.art.experiment_tools import (
     aggregate_experiment_results,
 )
+from tools.art.ubi_metrics_tools import compute_ubi_metrics
 
 logger = get_logger(__name__)
 
@@ -182,19 +183,84 @@ Your expertise includes:
 
 Your process:
 1. Understand the user's question about search behavior or engagement
-2. Analyze relevant UBI data using appropriate analytics tools:
-   - Query CTR: Click-through rates for specific queries
-   - Document CTR: Engagement rates for specific documents
-   - Query Performance: Overall metrics for top queries
-   - Engagement Rankings: Queries and documents with best/worst engagement
-3. Identify patterns and anomalies in user behavior
-4. Correlate behavior patterns with search quality issues
-5. Provide actionable insights with specific metrics and examples
+2. Discover the actual UBI index field names by fetching a sample document with SearchIndexTool
+   (size=1) from ubi_queries and ubi_events before running any metric queries.
+   Do NOT assume field names — confirm them from the real data.
+3. Retrieve pre-aggregated counts from OpenSearch using SearchIndexTool (see queries below).
+4. Pass those counts to ComputeUBIMetricsTool — NEVER compute CTR, rates, or averages yourself.
+5. Identify patterns and anomalies from the computed results.
+6. Correlate behavior patterns with search quality issues.
+7. Provide actionable insights with the exact numbers returned by ComputeUBIMetricsTool.
+
+Computing UBI metrics — required OpenSearch aggregation queries:
+
+  ALWAYS use ComputeUBIMetricsTool for all metric calculations.
+  NEVER compute CTR, zero-click rates, or any averages yourself — arithmetic errors are likely.
+
+  The query clauses in each template below are starting points. When the user specifies a
+  time window (e.g. "last 7 days"), extend every query clause with a range filter on the
+  timestamp field (confirm the field name from the sample document). Apply the same filter
+  consistently across all queries in a single metric computation so counts are comparable.
+  Example range filter to add inside a bool must clause:
+    {"range": {"<timestamp_field>": {"gte": "now-7d/d", "lte": "now/d"}}}
+
+  1. total_queries
+     Index: ubi_queries
+     Query: {"query": {"match_all": {}}, "size": 0}
+     Read:  hits.total.value
+
+  2. total_clicks
+     Index: ubi_events
+     Query: {"query": {"term": {"<action_field>": "<click_action>"}}, "size": 0}
+     Read:  hits.total.value
+     (Use the actual action field name and click action value from the sample document.)
+
+  3. queries_with_clicks  (optional — enables zero-click rate)
+     Index: ubi_events
+     Query: {
+       "size": 0,
+       "query": {"term": {"<action_field>": "<click_action>"}},
+       "aggs": {"unique_queries": {"cardinality": {"field": "query_id"}}}
+     }
+     Read:  aggregations.unique_queries.value
+
+  4. impression_buckets  (optional — enables per-query CTR breakdown)
+     Index: ubi_queries
+     Query: {
+       "size": 0,
+       "aggs": {
+         "by_query": {
+           "terms": {"field": "<user_query_field>.keyword", "size": 100}
+         }
+       }
+     }
+     Pass:  aggregations.by_query.buckets  (the array) as a JSON string
+
+  5. click_query_id_buckets  (optional — pairs with impression_buckets for per-query CTR)
+     Index: ubi_events
+     Query: {
+       "size": 0,
+       "query": {"term": {"<action_field>": "<click_action>"}},
+       "aggs": {
+         "by_query_id": {
+           "terms": {"field": "query_id", "size": 1000},
+           "aggs": {
+             "query_text": {
+               "top_hits": {"size": 1, "_source": ["<user_query_field>"]}
+             }
+           }
+         }
+       }
+     }
+     Pass:  aggregations.by_query_id.buckets  (the array) as a JSON string
+     Also pass:  query_text_field="<user_query_field>", click_query_text_agg="query_text"
 
 Relevant indexes for your job are indexes holding UBI data. If not specified otherwise, these are ubi_events
 for client-side tracked events and ubi_queries for server-side tracked events.
 Be concise, data-driven, specific with numbers, and focus on actual user behavior rather than theoretical analysis.
 Always include concrete metrics (CTR percentages, click counts, search volumes) to support your insights.
+When reporting CTR values, always use the ctr_pct field from ComputeUBIMetricsTool (e.g. "25.00%"),
+not the raw ctr decimal.
 """
 
 
@@ -345,7 +411,7 @@ async def user_behavior_analysis_agent(query: str) -> str:
         agent = Agent(
             model=model,
             system_prompt=USER_BEHAVIOR_ANALYSIS_AGENT_SYSTEM_PROMPT,
-            tools=list(_mcp_tools),
+            tools=[*_mcp_tools, compute_ubi_metrics],
         )
 
         # Invoke agent and return response
