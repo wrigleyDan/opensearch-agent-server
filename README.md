@@ -12,6 +12,9 @@ OpenSearch Agent Server enables intelligent agent-based interactions within Open
 - **Flexible LLM Support** — Works with AWS Bedrock, Ollama, or other LLM providers
 - **Production Ready** — Includes authentication, rate limiting, error recovery, and observability
 
+## Demo
+https://github.com/user-attachments/assets/d465d805-40c9-4158-8e4b-0805c675df45
+
 ## Architecture
 
 ```
@@ -21,7 +24,7 @@ OpenSearch Dashboards (AG-UI)
     ├── Router (context-based)
     ├── Agent Registry
     │   ├── ART Agent (strands-agents)
-    │   └── Fallback Agent
+    │   └── Default Agent
     └── OpenSearch MCP Server
             ↓
     OpenSearch Cluster
@@ -49,7 +52,7 @@ OpenSearch Dashboards (AG-UI)
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/mingshl/opensearch-agent-server.git
+   git clone https://github.com/opensearch-project/opensearch-agent-server.git
    cd opensearch-agent-server
    ```
 
@@ -102,9 +105,62 @@ AG_UI_LOG_LEVEL=INFO
 
 ## Quick Start
 
-### Complete Setup (3-Component Stack)
+```bash
+./scripts/quickstart.sh
+```
 
-To run the full demo with OpenSearch, Agent Server, and Dashboards:
+This clones, builds, and starts everything in one command:
+
+1. Clones [search-relevance](https://github.com/opensearch-project/search-relevance) and [OpenSearch Dashboards](https://github.com/opensearch-project/OpenSearch-Dashboards) (with the [dashboards-search-relevance](https://github.com/opensearch-project/dashboards-search-relevance) plugin)
+2. Bootstraps OSD and starts OpenSearch via `./gradlew run`
+3. Starts MCP Server (port 3001), OSD (port 5601), and Agent Server (port 8001)
+4. Creates a workspace with a local data source and loads demo data
+5. Runs a smoke test against all services
+
+**Prerequisites:** Java 21+, Node.js 20+, Python 3.12+, [uv](https://astral.sh/uv), yarn, jq, curl
+
+**Access the Chat:** Open http://localhost:5601 and click the chat icon in the header.
+
+## PyPI Installation
+
+If you already have an OpenSearch cluster running and don't need the full quickstart setup, you can install and run the agent server directly from PyPI:
+
+```bash
+pip install opensearch-agent-server
+```
+
+Configure your environment:
+
+```bash
+export OPENSEARCH_URL=https://localhost:9200
+export OPENSEARCH_USERNAME=admin
+export OPENSEARCH_PASSWORD=admin
+export AG_UI_AUTH_ENABLED=false
+```
+
+Start the agent server and MCP server together:
+
+```bash
+opensearch-agent-server --with-mcp
+```
+
+This starts both the OpenSearch MCP Server (port 3001) and the Agent Server (port 8001) in a single process. Both stop together on `Ctrl+C`.
+
+```bash
+# Verify
+curl http://localhost:8001/health    # {"status": "ok"}
+curl http://localhost:8001/agents    # list registered agents
+```
+
+You can also customize the MCP server port and config:
+
+```bash
+opensearch-agent-server --with-mcp --mcp-port 3002 --mcp-config ./custom_mcp.yml
+```
+
+### Manual Setup
+
+To run each component separately:
 
 **Terminal 1 - OpenSearch**
 ```bash
@@ -120,7 +176,6 @@ curl http://localhost:9200 -u admin:Admin1234!
 
 **Terminal 2 - Agent Server**
 ```bash
-# Configure and start opensearch agent server
 cd opensearch-agent-server
 cp .env.example .env
 # Edit .env with your settings
@@ -132,7 +187,6 @@ python run_server.py
 
 **Terminal 3 - OpenSearch Dashboards**
 ```bash
-# Start dashboard (requires Node.js 22+)
 cd OpenSearch-Dashboards
 # Ensure config/opensearch_dashboards.yml has chat.agUiUrl configured
 yarn start --no-base-path
@@ -142,7 +196,7 @@ yarn start --no-base-path
 
 **Access the Chat**
 - Open http://localhost:5601
-- Click the chat icon (💬) in the top-right header
+- Click the chat icon in the top-right header
 - Start asking questions about your data!
 
 ## Usage
@@ -261,23 +315,37 @@ ruff check .
 ```
 opensearch-agent-server/
 ├── src/
-│   ├── agents/          # Agent implementations
-│   │   ├── art_agent.py      # Main agent using strands-agents
-│   │   └── fallback_agent.py # Fallback for errors
-│   ├── orchestrator/    # Routing and registry
-│   │   ├── router.py         # Context-based routing
-│   │   └── registry.py       # Agent registry
-│   ├── server/          # FastAPI application
-│   │   ├── ag_ui_app.py      # Main FastAPI app
-│   │   ├── run_routes.py     # AG-UI protocol endpoints
-│   │   ├── config.py         # Configuration management
-│   │   └── ...               # Middleware, auth, etc.
-│   └── utils/           # Utilities
-│       └── mcp_connection.py # OpenSearch MCP client
-├── tests/               # Test suite
-├── run_server.py        # Entry point
-├── pyproject.toml       # Project metadata
-└── .env.example         # Environment template
+│   ├── agents/                    # Agent implementations
+│   │   ├── art/                   # ART (Search Relevance Testing) agent
+│   │   │   ├── art_agent.py       # ART orchestrator agent
+│   │   │   └── specialized_agents.py  # Hypothesis, evaluation, UBI sub-agents
+│   │   ├── base.py                # Agent protocol / base types
+│   │   └── default_agent.py       # General OpenSearch assistant
+│   ├── orchestrator/              # Routing and registry
+│   │   ├── router.py              # Context-based routing
+│   │   └── registry.py            # Agent registry
+│   ├── server/                    # FastAPI application
+│   │   ├── ag_ui_app.py           # Main FastAPI app and lifespan
+│   │   ├── cli.py                 # CLI entry point (opensearch-agent-server command)
+│   │   ├── agent_orchestrator.py  # Orchestrator: routes requests to agents
+│   │   ├── run_routes.py          # AG-UI protocol endpoints
+│   │   ├── config.py              # Configuration management
+│   │   └── ...                    # Middleware, auth, rate limiting, etc.
+│   ├── tools/                     # Agent tools (local computation)
+│   │   └── art/                   # ART-specific tools
+│   │       └── experiment_tools.py  # Experiment results aggregation
+│   └── utils/                     # Shared utilities
+│       ├── mcp_connection.py      # OpenSearch MCP client
+│       ├── logging_helpers.py     # Structured logging
+│       ├── monitored_tool.py      # Tool instrumentation wrapper
+│       └── ...                    # Persistence, activity monitor, etc.
+├── tests/
+│   ├── helpers/                   # Shared test helpers
+│   ├── integration/               # Integration tests
+│   └── unit/                      # Unit tests
+├── run_server.py                  # Entry point
+├── pyproject.toml                 # Project metadata and dependencies
+└── .env.example                   # Environment template
 ```
 
 ## API Endpoints

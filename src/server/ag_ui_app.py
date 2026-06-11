@@ -303,7 +303,7 @@ def create_app(config_override: ServerConfig | None = None) -> FastAPI:
         setup_rate_limiting(app, rate_limiter)
 
         # --- Orchestrator setup: register agent factories ---
-        from agents.fallback_agent import create_fallback_agent
+        from agents.default_agent import create_default_agent
         from orchestrator.registry import AgentRegistration, AgentRegistry
         from orchestrator.router import PageContextRouter
 
@@ -313,16 +313,16 @@ def create_app(config_override: ServerConfig | None = None) -> FastAPI:
         # Try to load the ART agent.  Its dependencies (strands-agents, boto3,
         # mcp) are required in pyproject.toml, but a broken install or missing
         # optional system dependency could still cause an ImportError at startup.
-        # In that case we skip ART and let the fallback agent handle everything.
+        # In that case we skip ART and let the default agent handle everything.
         try:
             from agents.art.art_agent import create_art_agent
 
             registry.register(AgentRegistration(
                 name="art",
-                description="Search Relevance Testing agent (ART) — hypothesis generation, "
-                "evaluation, UBI analysis, and online A/B testing",
-                page_contexts=["search-relevance", "searchRelevance"],
-                is_fallback=False,
+                description="Search Relevance Tuning agent (ART) — hypothesis generation, "
+                "evaluation, and UBI analysis.",
+                page_contexts=["search_overview", "search-relevance", "searchRelevance"],
+                is_default=False,
             ))
             _art_agent_available = True
             log_info_event(
@@ -335,17 +335,17 @@ def create_app(config_override: ServerConfig | None = None) -> FastAPI:
             log_warning_event(
                 logger,
                 f"✗ ART agent not available (missing dependency: {e}). "
-                "Server will run with fallback agent only.",
+                "Server will run with default agent only.",
                 "ag_ui.art_agent_unavailable",
                 error=str(e),
             )
 
-        # Register fallback agent (handles all unmatched page contexts)
+        # Register default agent (handles all unmatched page contexts)
         registry.register(AgentRegistration(
-            name="fallback",
+            name="default",
             description="General OpenSearch assistant with MCP tools",
             page_contexts=[],
-            is_fallback=True,
+            is_default=True,
         ))
 
         log_info_event(
@@ -366,28 +366,42 @@ def create_app(config_override: ServerConfig | None = None) -> FastAPI:
         # to the MCP server (and ultimately to OpenSearch).
         orchestrator = AgentOrchestrator(router)
 
-        # Register fallback agent factory
+        # Build a shared config that injects AG-UI context into the user message
+        # so the LLM is aware of the page the user is currently viewing.
+        from ag_ui_strands.config import StrandsAgentConfig
+
+        def _page_context_builder(input_data: Any, user_message: str) -> str:
+            if input_data.context:
+                context_text = "\n".join(
+                    f"{ctx.description}: {ctx.value}" for ctx in input_data.context
+                )
+                return f"{user_message}\n\n## Context from the application\n{context_text}"
+            return user_message
+
+        context_config = StrandsAgentConfig(state_context_builder=_page_context_builder)
+
+        # Register default agent factory.
+        # Auth is handled by OboAuth (contextvars) — no headers needed.
         orchestrator.register_agent_factory(
-            name="fallback",
-            factory=lambda headers: create_fallback_agent(
-                opensearch_url, headers=headers
-            ),
+            name="default",
+            factory=lambda: create_default_agent(opensearch_url),
             description="General OpenSearch assistant with MCP tools",
+            config=context_config,
         )
         log_info_event(
             logger,
-            "✓ Fallback agent factory registered",
-            "ag_ui.fallback_agent_factory_ready",
+            "✓ Default agent factory registered",
+            "ag_ui.default_agent_factory_ready",
         )
 
-        # Register ART agent factory only if the import succeeded
+        # Register ART agent factory only if the import succeeded.
+        # Auth is handled by OboAuth (contextvars) — no headers needed.
         if _art_agent_available:
             orchestrator.register_agent_factory(
                 name="art",
-                factory=lambda headers: create_art_agent(
-                    opensearch_url, headers=headers
-                ),
-                description="Search Relevance Testing agent (ART)",
+                factory=lambda: create_art_agent(opensearch_url),
+                description="Search Relevance Tuning agent (ART)",
+                config=context_config,
             )
             log_info_event(
                 logger,
@@ -580,7 +594,7 @@ async def list_agents(request: Request) -> dict:
                 "name": reg.name,
                 "description": reg.description,
                 "page_contexts": reg.page_contexts,
-                "is_fallback": reg.is_fallback,
+                "is_default": reg.is_default,
             }
             for reg in registry.list_agents()
         ]
