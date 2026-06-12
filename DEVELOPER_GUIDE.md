@@ -32,7 +32,7 @@ This project uses [uv](https://docs.astral.sh/uv/) for package management.
 
 ```bash
 # Create venv and install all dependencies (including dev extras)
-uv sync --extra dev
+uv sync --all-extras
 
 # Activate the venv
 source .venv/bin/activate
@@ -55,7 +55,7 @@ Edit `.env` to set your OpenSearch URL, credentials, and LLM provider. At minimu
 ```bash
 # After editing pyproject.toml, update lock file and sync
 uv lock
-uv sync --extra dev
+uv sync --all-extras
 ```
 
 ## Running the Server
@@ -82,7 +82,7 @@ uv add --dev <package-name>
 
 # Update all dependencies to latest allowed versions
 uv lock --upgrade
-uv sync --extra dev
+uv sync --all-extras
 ```
 
 ## Adding a New Agent
@@ -182,8 +182,6 @@ uv run pytest --cov=server --cov=agents --cov=orchestrator
 ```
 
 ### Integration Tests
-
-Integration tests require a running OpenSearch instance. Set the connection variables in your `.env` (or export them), then run:
 
 ```bash
 uv run pytest -m integration
