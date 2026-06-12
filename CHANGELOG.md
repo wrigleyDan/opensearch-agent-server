@@ -5,6 +5,7 @@
 - PPL reference skill and skills auto-discovery for the default agent
 ### Fixed
 - Default agent now respects `BEDROCK_INFERENCE_PROFILE_ARN` env var instead of silently falling back to a hardcoded Sonnet 4 model (fixes #94)
+- Tool calls now appear in the correct position in the UI instead of at the end of the preceding text message; upgraded `ag-ui-strands` to 0.1.9 which properly emits `TEXT_MESSAGE_END` before `TOOL_CALL_START` (fixes #75)
 ### Removed
 
 ## [0.2.0] - 2026-04-10
